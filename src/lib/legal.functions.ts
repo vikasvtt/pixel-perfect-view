@@ -69,6 +69,9 @@ const analysisSchema = {
 
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/** Mirror of the upload page limit — enforced server-side before any Gemini call. */
+const MAX_FILE_MB = 14;
+
 async function friendly<T>(fn: () => Promise<T>): Promise<Result<T>> {
   try {
     return { ok: true, value: await fn() };
@@ -84,7 +87,17 @@ export const analyzeDocument = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ doc: DocSchema }).parse(d))
   .handler(async ({ data }): Promise<Result<Analysis>> =>
     friendly(async () => {
-      const { callGemini, docParts } = await import("./gemini.server");
+      const { callGemini, docParts, GeminiError } = await import("./gemini.server");
+      if (data.doc.data) {
+        // Base64 is ~4/3 of the binary size; decode before comparing to the limit.
+        const bytes = Math.floor((data.doc.data.length * 3) / 4);
+        if (bytes > MAX_FILE_MB * 1024 * 1024) {
+          throw new GeminiError(
+            `That file is too large — the limit is ${MAX_FILE_MB} MB. Please compress or split the PDF and try again.`,
+            413,
+          );
+        }
+      }
       const text = await callGemini({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [
