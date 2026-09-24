@@ -34,3 +34,4 @@ dist-ssr
 # Environment files (secrets live in Lovable Cloud encrypted store, never in git)
 .env.*
 !.env.example
+.env
