@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { UploadCloud, FileText, X, AlertTriangle } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell, Disclaimer } from "@/components/AppShell";
+import { analyzeDocument } from "@/lib/legal.functions";
+import { fileToPayload, saveCurrent } from "@/lib/documentStore";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -31,7 +34,8 @@ function UploadPage() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [file, setFile] = useState<{ name: string; size: number } | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const analyzeFn = useServerFn(analyzeDocument);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -48,23 +52,33 @@ function UploadPage() {
       return;
     }
     setError(null);
-    setFile({ name: f.name, size: f.size });
+    setFile(f);
   }
 
-  function analyze() {
+  async function analyze() {
     if (!file || progress !== null) return;
-    setProgress(0);
+    setError(null);
+    setProgress(5);
     const timer = setInterval(() => {
-      setProgress((p) => {
-        const next = (p ?? 0) + 10;
-        if (next >= 100) {
-          clearInterval(timer);
-          setTimeout(() => navigate({ to: "/analysis" }), 350);
-          return 100;
-        }
-        return next;
-      });
-    }, 160);
+      setProgress((p) => (p === null ? p : Math.min(92, p + (p < 60 ? 6 : 2))));
+    }, 500);
+    try {
+      const doc = await fileToPayload(file);
+      const res = await analyzeFn({ data: { doc } });
+      clearInterval(timer);
+      if (!res.ok) {
+        setError(res.error);
+        setProgress(null);
+        return;
+      }
+      saveCurrent(doc, res.value);
+      setProgress(100);
+      setTimeout(() => navigate({ to: "/analysis" }), 350);
+    } catch (e) {
+      clearInterval(timer);
+      setError(e instanceof Error && e.message ? e.message : "Something went wrong. Please try again.");
+      setProgress(null);
+    }
   }
 
   return (
@@ -73,7 +87,7 @@ function UploadPage() {
         <div className="eyebrow text-cyan">Step 1 of 2</div>
         <h1 className="mt-2 font-display text-4xl font-bold tracking-tight">Upload a document</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          PDF or DOCX · up to {MAX_MB} MB · your file stays in this demo, nothing is sent anywhere.
+          PDF or DOCX · up to {MAX_MB} MB · your file is read securely by our AI and not stored.
         </p>
       </div>
 
@@ -176,7 +190,7 @@ function UploadPage() {
             Analyze Document
           </button>
           <span className="text-[11px] text-muted-foreground">
-            Demo build — results use a sample rental agreement.
+            AI analysis usually takes 10–40 seconds.
           </span>
         </div>
       </div>
