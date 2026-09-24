@@ -2,7 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, FileText } from "lucide-react";
 import { AppShell, Disclaimer } from "@/components/AppShell";
-import { fallbackAnswer, mockAnswers, sampleDocument, suggestedQuestions } from "@/data/mockData";
+import { useServerFn } from "@tanstack/react-start";
+import { sampleDocument, suggestedQuestions } from "@/data/mockData";
+import { askDocument } from "@/lib/legal.functions";
+import { currentDocContext, loadCurrent } from "@/lib/documentStore";
+
+const sampleContext = {
+  name: "Sample rental agreement",
+  mimeType: "text/plain",
+  text: `Sample residential lease (fictional). Structured contents:\n${JSON.stringify(sampleDocument)}`,
+};
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
@@ -33,12 +42,25 @@ function Assistant() {
     },
   ]);
   const [input, setInput] = useState("");
+  const [docLabel, setDocLabel] = useState(`${sampleDocument.title} — ${sampleDocument.subtitle}`);
+  const askFn = useServerFn(askDocument);
   const [thinking, setThinking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+    const s = loadCurrent();
+    if (s) {
+      setDocLabel(`${s.analysis.title} (${s.name})`);
+      setMessages([
+        {
+          id: 1,
+          role: "assistant",
+          text: `I've read "${s.name}". Ask me anything about it — my answers come only from this document.`,
+        },
+      ]);
+    }
   }, []);
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -50,14 +72,15 @@ function Assistant() {
     setMessages((m) => [...m, { id: nextId++, role: "user", text: q }]);
     setInput("");
     setThinking(true);
-    setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        { id: nextId++, role: "assistant", text: mockAnswers[q] ?? fallbackAnswer },
-      ]);
-      setThinking(false);
-      inputRef.current?.focus();
-    }, 900);
+    const history = messages.slice(1).map(({ role, text }) => ({ role, text }));
+    askFn({ data: { doc: currentDocContext(sampleContext), history, question: q } })
+      .then((res) => (res.ok ? res.value : `⚠ ${res.error}`))
+      .catch(() => "⚠ Couldn't reach the AI. Please try again.")
+      .then((text) => {
+        setMessages((m) => [...m, { id: nextId++, role: "assistant", text }]);
+        setThinking(false);
+        inputRef.current?.focus();
+      });
   }
 
   return (
@@ -67,7 +90,7 @@ function Assistant() {
         <h1 className="mt-2 font-display text-4xl font-bold tracking-tight">Ask your document</h1>
         <div className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
           <FileText className="size-4 text-cyan" aria-hidden />
-          Answers are based on {sampleDocument.title} — {sampleDocument.subtitle}
+          Answers are based on {docLabel} · general information, not legal advice
         </div>
       </div>
 

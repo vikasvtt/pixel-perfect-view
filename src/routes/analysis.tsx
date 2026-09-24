@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, Disclaimer, RiskBadge } from "@/components/AppShell";
-import { sampleDocument as doc } from "@/data/mockData";
+import { useEffect, useState } from "react";
+import { sampleDocument } from "@/data/mockData";
+import { loadCurrent } from "@/lib/documentStore";
+import type { Analysis as AnalysisData } from "@/lib/analysisTypes";
 
 export const Route = createFileRoute("/analysis")({
   head: () => ({
@@ -74,6 +77,11 @@ function Bullets({ items }: { items: string[] }) {
 }
 
 function Analysis() {
+  const [doc, setDoc] = useState<AnalysisData & { status: string }>(sampleDocument);
+  useEffect(() => {
+    const s = loadCurrent();
+    if (s) setDoc({ ...s.analysis, status: `AI analysis · ${s.name}` });
+  }, []);
   return (
     <AppShell>
       <div className="anim-in flex flex-wrap items-center justify-between gap-4">
