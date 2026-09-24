@@ -170,3 +170,164 @@ If the document doesn't cover the question, say so and suggest asking a qualifie
       });
     }),
   );
+
+// ---------- Document comparison ----------
+
+export type ChangeCategory =
+  | "added" | "removed" | "modified" | "payment" | "date" | "obligation" | "termination" | "penalty";
+
+export type ComparisonChange = {
+  category: ChangeCategory;
+  section: string;
+  title: string;
+  original: string;
+  revised: string;
+  explanation: string;
+  importance: "High" | "Medium" | "Low";
+};
+
+export type Comparison = {
+  summary: string;
+  keyChanges: string[];
+  changes: ComparisonChange[];
+};
+
+const comparisonSchema = {
+  type: "OBJECT",
+  properties: {
+    summary: { type: "STRING" },
+    keyChanges: strings,
+    changes: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          category: {
+            type: "STRING",
+            enum: ["added", "removed", "modified", "payment", "date", "obligation", "termination", "penalty"],
+          },
+          section: { type: "STRING" },
+          title: { type: "STRING" },
+          original: { type: "STRING" },
+          revised: { type: "STRING" },
+          explanation: { type: "STRING" },
+          importance: { type: "STRING", enum: ["High", "Medium", "Low"] },
+        },
+        required: ["category", "section", "title", "original", "revised", "explanation", "importance"],
+      },
+    },
+  },
+  required: ["summary", "keyChanges", "changes"],
+};
+
+async function checkPairSize(a: z.infer<typeof DocSchema>, b: z.infer<typeof DocSchema>) {
+  const { GeminiError } = await import("./gemini.server");
+  const size = (d: z.infer<typeof DocSchema>) =>
+    d.data ? Math.floor((d.data.length * 3) / 4) : (d.text?.length ?? 0);
+  for (const d of [a, b]) {
+    if (!d.data && !d.text?.trim()) {
+      throw new GeminiError(`"${d.name}" appears to be empty. Please choose a document with text.`, 400);
+    }
+  }
+  if (size(a) + size(b) > MAX_FILE_MB * 1024 * 1024) {
+    throw new GeminiError(
+      `These files are too large together — the combined limit is ${MAX_FILE_MB} MB. Please compress the PDFs and try again.`,
+      413,
+    );
+  }
+}
+
+function pairParts(docParts: (d: z.infer<typeof DocSchema>) => unknown[], a: z.infer<typeof DocSchema>, b: z.infer<typeof DocSchema>) {
+  return [
+    { text: `ORIGINAL DOCUMENT (file: ${a.name}):` },
+    ...docParts(a),
+    { text: `NEW DOCUMENT (file: ${b.name}):` },
+    ...docParts(b),
+  ];
+}
+
+const PairSchema = z.object({ original: DocSchema, revised: DocSchema });
+
+export const compareDocuments = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => PairSchema.parse(d))
+  .handler(async ({ data }): Promise<Result<Comparison>> =>
+    friendly(async () => {
+      const { callGemini, docParts, GeminiError } = await import("./gemini.server");
+      await checkPairSize(data.original, data.revised);
+      const text = await callGemini({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              ...pairParts(docParts, data.original, data.revised),
+              {
+                text: `Compare the ORIGINAL and NEW documents clause-by-clause. Return JSON only.
+- changes: every important difference. category is one of: added (clause only in NEW), removed (clause only in ORIGINAL), payment (changed amounts/fees/deposits), date (changed dates/deadlines/notice periods), obligation (changed duties), termination (changed termination/renewal), penalty (changed penalties/late fees), modified (any other changed clause).
+- section: clause/section reference (e.g. "§4.2"), or "—" if none.
+- title: short name of the term. original / revised: the wording or meaning in each version ("Not present" if absent).
+- explanation: plain-language what changed and why it matters to the reader.
+- importance: High / Medium / Low for the person signing.
+- summary: 2-3 sentences on the most important changes. keyChanges: 3-5 short bullets.
+Order changes by importance. Only report real differences found in the documents.`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: comparisonSchema,
+          temperature: 0.2,
+        },
+      }, { retries: 4 });
+      try {
+        return JSON.parse(text) as Comparison;
+      } catch {
+        throw new GeminiError("The AI response was incomplete. Please try again.", 502);
+      }
+    }),
+  );
+
+export const askComparison = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    PairSchema.extend({
+      comparison: z.string().max(200_000),
+      history: z
+        .array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(8000) }))
+        .max(30),
+      question: z.string().min(1).max(2000),
+    }).parse(d),
+  )
+  .handler(async ({ data }): Promise<Result<string>> =>
+    friendly(async () => {
+      const { callGemini, docParts } = await import("./gemini.server");
+      await checkPairSize(data.original, data.revised);
+      return callGemini({
+        systemInstruction: {
+          parts: [
+            {
+              text: `${SYSTEM}
+Answer questions about the differences between the ORIGINAL and NEW documents, using only these documents. Cite sections when possible. Keep answers under 150 words, plain text, no markdown headings.
+If the documents don't cover the question, say so and suggest asking a qualified lawyer.`,
+            },
+          ],
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              ...pairParts(docParts, data.original, data.revised),
+              { text: `Comparison already produced:\n${data.comparison}` },
+            ],
+          },
+          { role: "model", parts: [{ text: "Understood. Ask me anything about these changes." }] },
+          ...data.history.map((m) => ({
+            role: m.role === "user" ? "user" : "model",
+            parts: [{ text: m.text }],
+          })),
+          { role: "user", parts: [{ text: data.question }] },
+        ],
+        generationConfig: { temperature: 0.3 },
+      }, { retries: 2 });
+    }),
+  );
