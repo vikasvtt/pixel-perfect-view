@@ -24,7 +24,22 @@ export function docParts(doc: DocPayload) {
   return [{ text: `DOCUMENT "${doc.name}":\n\n${doc.text ?? ""}` }];
 }
 
-export async function callGemini(body: unknown): Promise<string> {
+export async function callGemini(body: unknown, opts: { retries?: number } = {}): Promise<string> {
+  const retries = opts.retries ?? 0;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await callGeminiOnce(body);
+    } catch (e) {
+      const retryable = e instanceof GeminiError && (e.status === 503 || e.status === 429 || e.status === 500);
+      if (!retryable || attempt >= retries) throw e;
+      const wait = 1500 * 2 ** attempt + Math.random() * 500;
+      console.warn(`Gemini ${(e as GeminiError).status}, retry ${attempt + 1}/${retries} in ${Math.round(wait)}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
+async function callGeminiOnce(body: unknown): Promise<string> {
   const key = process.env["GEMINI_API_KEY"];
   if (!key) throw new GeminiError("The AI service isn't configured yet.", 500);
 

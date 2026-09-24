@@ -109,7 +109,7 @@ export const analyzeDocument = createServerFn({ method: "POST" })
           responseSchema: analysisSchema,
           temperature: 0.2,
         },
-      });
+      }, { retries: 4 });
       try {
         return JSON.parse(text) as Analysis;
       } catch {
