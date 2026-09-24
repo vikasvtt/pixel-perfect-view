@@ -21,7 +21,7 @@ export const Route = createFileRoute("/upload")({
   component: UploadPage,
 });
 
-const MAX_MB = 20;
+const MAX_MB = 14;
 const examples = [
   "Rental agreement",
   "Employment contract",
@@ -47,7 +47,9 @@ function UploadPage() {
       return;
     }
     if (f.size > MAX_MB * 1024 * 1024) {
-      setError(`That file is larger than ${MAX_MB} MB.`);
+      setError(
+        `That file is too large — it's ${(f.size / 1024 / 1024).toFixed(1)} MB, and the limit is ${MAX_MB} MB. Please compress or split the PDF and try again.`,
+      );
       setFile(null);
       return;
     }
