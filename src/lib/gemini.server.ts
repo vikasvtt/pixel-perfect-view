@@ -5,9 +5,9 @@ export type DocPayload = {
   name: string;
   mimeType: string;
   /** base64 file data (PDF) */
-  data?: string;
+  data?: string | undefined;
   /** extracted plain text (DOCX or fallback context) */
-  text?: string;
+  text?: string | undefined;
 };
 
 export class GeminiError extends Error {

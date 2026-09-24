@@ -1,12 +1,12 @@
 // Client-side holder for the current uploaded document and its AI analysis.
 import type { Analysis } from "./analysisTypes";
 
-export type DocPayload = { name: string; mimeType: string; data?: string; text?: string };
+export type DocPayload = { name: string; mimeType: string; data?: string | undefined; text?: string | undefined };
 
 const KEY = "legalease.current";
 let memoryDoc: DocPayload | null = null;
 
-type Stored = { analysis: Analysis; name: string; text?: string };
+type Stored = { analysis: Analysis; name: string; text?: string | undefined };
 
 export async function fileToPayload(file: File): Promise<DocPayload> {
   if (/\.docx$/i.test(file.name)) {
