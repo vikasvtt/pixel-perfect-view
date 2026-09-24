@@ -1,5 +1,5 @@
 // Server-only Gemini helper. Never import from client code.
-export const GEMINI_MODEL = "gemini-3.6-flash";
+export const GEMINI_MODEL = "gemini-3.8-flash";
 
 export type DocPayload = {
   name: string;
