@@ -48,7 +48,9 @@ export async function callGemini(body: unknown): Promise<string> {
     const msg =
       res.status === 429
         ? "The AI service is busy right now. Please wait a moment and try again."
-        : res.status === 400
+        : res.status === 503
+          ? "The AI service is very busy right now. Please try again in a minute."
+          : res.status === 400
           ? "The AI couldn't process this document. Try a different file or a text-based PDF."
           : res.status === 401 || res.status === 403
             ? "The AI key was rejected. Please check the saved Gemini key."
