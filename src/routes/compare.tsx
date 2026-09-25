@@ -146,7 +146,7 @@ function ChangeCard({ c }: { c: ComparisonChange }) {
   );
 }
 
-type Msg = { role: "user" | "assistant"; text: string };
+type Msg = { role: "user" | "assistant"; text: string; retryable?: boolean };
 
 function Compare() {
   const compareFn = useServerFn(compareDocuments);
@@ -157,6 +157,7 @@ function Compare() {
   const [result, setResult] = useState<Comparison | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
   const [asking, setAsking] = useState(false);
@@ -173,20 +174,44 @@ function Compare() {
     if (!original || !revised || running) return;
     setRunning(true);
     setError(null);
+    setCanRetry(false);
     setResult(null);
     setMsgs([]);
     try {
       const pair = { original: await fileToPayload(original), revised: await fileToPayload(revised) };
       const res = await compareFn({ data: pair });
-      if (!res.ok) setError(res.error);
-      else {
+      if (!res.ok) {
+        setError(res.error);
+        setCanRetry(res.retryable === true);
+      } else {
         setDocs(pair);
         setResult(res.value);
       }
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : "Something went wrong. Please try again.");
+      setCanRetry(false);
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function requestAnswer(question: string, history: Msg[]) {
+    if (!docs || !result) return;
+    setAsking(true);
+    try {
+      const res = await askFn({
+        data: { ...docs, comparison: JSON.stringify(result), history, question },
+      });
+      setMsgs((m) => [
+        ...m,
+        res.ok
+          ? { role: "assistant" as const, text: res.value }
+          : { role: "assistant" as const, text: res.error, retryable: res.retryable },
+      ]);
+    } catch {
+      setMsgs((m) => [...m, { role: "assistant" as const, text: "Something went wrong. Please try again." }]);
+    } finally {
+      setAsking(false);
     }
   }
 
@@ -195,17 +220,15 @@ function Compare() {
     const history = msgs;
     setMsgs([...history, { role: "user", text: question }]);
     setQ("");
-    setAsking(true);
-    try {
-      const res = await askFn({
-        data: { ...docs, comparison: JSON.stringify(result), history, question },
-      });
-      setMsgs((m) => [...m, { role: "assistant", text: res.ok ? res.value : res.error }]);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", text: "Something went wrong. Please try again." }]);
-    } finally {
-      setAsking(false);
-    }
+    requestAnswer(question, history);
+  }
+
+  function retryAsk(msgIndex: number) {
+    if (!docs || !result || asking) return;
+    if (msgs[msgIndex - 1]?.role !== "user") return;
+    const question = msgs[msgIndex - 1].text;
+    setMsgs(msgs.filter((_, i) => i !== msgIndex));
+    requestAnswer(question, msgs.slice(0, msgIndex - 1));
   }
 
   const added = result?.changes.filter((c) => c.category === "added") ?? [];
@@ -249,8 +272,19 @@ function Compare() {
       </div>
 
       {error && (
-        <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-[12px] text-destructive">
-          {error}
+        <div
+          role="alert"
+          className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-[12px] text-destructive"
+        >
+          <span className="min-w-0 flex-1">{error}</span>
+          {canRetry && (
+            <button
+              onClick={run}
+              className="shrink-0 rounded-lg border border-destructive/40 px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-destructive/20"
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 
@@ -324,6 +358,15 @@ function Compare() {
                   }`}
                 >
                   {m.text}
+                  {m.retryable && (
+                    <button
+                      onClick={() => retryAsk(i)}
+                      disabled={asking}
+                      className="mt-2 block rounded-lg border border-destructive/40 px-2.5 py-1 text-[11px] font-semibold text-destructive transition-colors hover:bg-destructive/15 disabled:opacity-40"
+                    >
+                      Try again
+                    </button>
+                  )}
                 </div>
               ))}
               {asking && <div className="text-[12px] text-muted-foreground">Thinking…</div>}
