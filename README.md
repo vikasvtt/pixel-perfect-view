@@ -50,7 +50,21 @@ All Gemini calls happen in server-side functions. The browser never talks to Gem
 - Documents are processed in memory and are not stored.
 - English-language documents are supported best.
 
-## Testing performed
+## Testing
+
+Automated suite (Vitest + Testing Library) — **75 tests, run with `npm test`** (or `bun run test`). Gemini is always mocked; tests never call the real API or read the real key (a fake test key is used).
+
+| File | Covers |
+|---|---|
+| `tests/fileValidation.test.ts` | PDF/DOCX extension checks (incl. uppercase, invalid, `file.pdf.exe`), exact 14 MB boundary, oversized & empty files, comparison categorisation, assistant history (welcome message excluded) and retry |
+| `tests/schemas.test.ts` | Server input validation: missing filename, blank/oversized questions, 30-message history limit |
+| `tests/gemini.test.ts` | 503 retries and final failure after the limit, 429 with zero automatic retries, 400/401/403, blocked, empty and network-failure responses, missing API key |
+| `tests/legal.server.test.ts` | Analysis, Assistant and Compare with mocked Gemini; server-side 14 MB and combined-size rejection before Gemini is called; empty documents; malformed AI JSON |
+| `tests/documentStore.test.ts` | PDF encoding, DOCX text extraction, empty DOCX, reload fallbacks |
+| `tests/pages.test.tsx` | Smoke tests: Dashboard, Upload, Analysis, Assistant, Compare render with the legal disclaimer |
+
+### Manual testing performed
+
 
 - End-to-end live tests: real PDF lease analyzed by Gemini, assistant questions answered with document-grounded answers, and oversized files (e.g. 16 MB PDF) rejected with a friendly error.
 - DOCX extraction, empty/unsupported-file handling, and server-side size validation tested.

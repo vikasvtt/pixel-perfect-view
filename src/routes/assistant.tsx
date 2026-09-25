@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { sampleDocument, suggestedQuestions } from "@/data/mockData";
 import { askDocument } from "@/lib/legal.functions";
 import { currentDocContext, loadCurrent } from "@/lib/documentStore";
+import { historyForAi, retryPlan } from "@/lib/fileValidation";
 
 const sampleContext = {
   name: "Sample rental agreement",
@@ -99,16 +100,15 @@ function Assistant() {
     if (!q || thinking) return;
     setMessages((m) => [...m, { id: nextId++, role: "user", text: q }]);
     setInput("");
-    callAi(q, messages.slice(1).map(({ role, text }) => ({ role, text })));
+    callAi(q, historyForAi(messages));
   }
 
   function retry(msgId: number) {
     if (thinking) return;
-    const errIdx = messages.findIndex((m) => m.id === msgId);
-    const prev = errIdx > 0 ? messages[errIdx - 1] : undefined;
-    if (!prev || prev.role !== "user") return;
+    const plan = retryPlan(messages, msgId);
+    if (!plan) return;
     setMessages((m) => m.filter((x) => x.id !== msgId));
-    callAi(prev.text, messages.slice(1, errIdx - 1).map(({ role, text }) => ({ role, text })));
+    callAi(plan.question, plan.history);
   }
 
   return (

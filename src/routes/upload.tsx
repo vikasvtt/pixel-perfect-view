@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { AppShell, Disclaimer } from "@/components/AppShell";
 import { analyzeDocument } from "@/lib/legal.functions";
 import { fileToPayload, saveCurrent } from "@/lib/documentStore";
+import { MAX_FILE_MB, uploadFileError } from "@/lib/fileValidation";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/upload")({
   component: UploadPage,
 });
 
-const MAX_MB = 14;
+const MAX_MB = MAX_FILE_MB;
 const examples = [
   "Rental agreement",
   "Employment contract",
@@ -41,16 +42,9 @@ function UploadPage() {
   const [progress, setProgress] = useState<number | null>(null);
 
   function accept(f: File) {
-    const ok = /\.(pdf|docx)$/i.test(f.name);
-    if (!ok) {
-      setError("That file type isn't supported yet. Upload a PDF or DOCX.");
-      setFile(null);
-      return;
-    }
-    if (f.size > MAX_MB * 1024 * 1024) {
-      setError(
-        `That file is too large — it's ${(f.size / 1024 / 1024).toFixed(1)} MB, and the limit is ${MAX_MB} MB. Please compress or split the PDF and try again.`,
-      );
+    const err = uploadFileError(f);
+    if (err) {
+      setError(err);
       setFile(null);
       return;
     }

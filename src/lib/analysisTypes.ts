@@ -16,3 +16,22 @@ export type Analysis = {
   risks: { title: string; detail: string; risk: RiskLevel }[];
   actionItems: string[];
 };
+
+export type ChangeCategory =
+  | "added" | "removed" | "modified" | "payment" | "date" | "obligation" | "termination" | "penalty";
+
+export type ComparisonChange = {
+  category: ChangeCategory;
+  section: string;
+  title: string;
+  original: string;
+  revised: string;
+  explanation: string;
+  importance: "High" | "Medium" | "Low";
+};
+
+export type Comparison = {
+  summary: string;
+  keyChanges: string[];
+  changes: ComparisonChange[];
+};
