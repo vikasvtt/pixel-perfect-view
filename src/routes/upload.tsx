@@ -37,6 +37,7 @@ function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const analyzeFn = useServerFn(analyzeDocument);
   const [error, setError] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
   function accept(f: File) {
@@ -70,6 +71,7 @@ function UploadPage() {
       clearInterval(timer);
       if (!res.ok) {
         setError(res.error);
+        setCanRetry(res.retryable === true);
         setProgress(null);
         return;
       }
@@ -79,6 +81,7 @@ function UploadPage() {
     } catch (e) {
       clearInterval(timer);
       setError(e instanceof Error && e.message ? e.message : "Something went wrong. Please try again.");
+      setCanRetry(false);
       setProgress(null);
     }
   }
@@ -137,7 +140,15 @@ function UploadPage() {
         {error && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
             <AlertTriangle className="size-4 shrink-0" aria-hidden />
-            {error}
+            <span className="min-w-0 flex-1">{error}</span>
+            {canRetry && (
+              <button
+                onClick={analyze}
+                className="shrink-0 rounded-lg border border-destructive/40 px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-destructive/20"
+              >
+                Try again
+              </button>
+            )}
           </div>
         )}
 

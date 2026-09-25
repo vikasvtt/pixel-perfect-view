@@ -67,7 +67,7 @@ const analysisSchema = {
   ],
 };
 
-type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+type Result<T> = { ok: true; value: T } | { ok: false; error: string; retryable?: boolean };
 
 /** Mirror of the upload page limit — enforced server-side before any Gemini call. */
 const MAX_FILE_MB = 14;
@@ -77,7 +77,10 @@ async function friendly<T>(fn: () => Promise<T>): Promise<Result<T>> {
     return { ok: true, value: await fn() };
   } catch (e) {
     const { GeminiError } = await import("./gemini.server");
-    if (e instanceof GeminiError) return { ok: false, error: e.message };
+    if (e instanceof GeminiError) {
+      const retryable = e.status === 429 || e.status === 503;
+      return { ok: false, error: e.message, retryable };
+    }
     console.error(e);
     return { ok: false, error: "Something went wrong while talking to the AI. Please try again." };
   }

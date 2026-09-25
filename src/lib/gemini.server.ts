@@ -30,7 +30,7 @@ export async function callGemini(body: unknown, opts: { retries?: number } = {})
     try {
       return await callGeminiOnce(body);
     } catch (e) {
-      const retryable = e instanceof GeminiError && (e.status === 503 || e.status === 429 || e.status === 500);
+      const retryable = e instanceof GeminiError && (e.status === 503 || e.status === 500);
       if (!retryable || attempt >= retries) throw e;
       const wait = 1500 * 2 ** attempt + Math.random() * 500;
       console.warn(`Gemini ${(e as GeminiError).status}, retry ${attempt + 1}/${retries} in ${Math.round(wait)}ms`);
@@ -62,9 +62,9 @@ async function callGeminiOnce(body: unknown): Promise<string> {
     console.error("Gemini error", res.status, detail.slice(0, 500));
     const msg =
       res.status === 429
-        ? "The AI service is busy right now. Please wait a moment and try again."
+        ? "The AI usage limit has been reached. Please try again later."
         : res.status === 503
-          ? "The AI service is very busy right now. Please try again in a minute."
+          ? "The AI service is temporarily busy. Please try again in a moment."
           : res.status === 400
           ? "The AI couldn't process this document. Try a different file or a text-based PDF."
           : res.status === 401 || res.status === 403
