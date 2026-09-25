@@ -97,6 +97,8 @@ function UploadPage() {
         <div
           role="button"
           tabIndex={0}
+          aria-label="Choose a PDF or DOCX document to upload, or drag and drop it here"
+          aria-describedby="upload-hint"
           onClick={() => inputRef.current?.click()}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
           onDragOver={(e) => {
@@ -123,6 +125,8 @@ function UploadPage() {
             ref={inputRef}
             type="file"
             accept=".pdf,.docx"
+            aria-label="Choose a PDF or DOCX document"
+            tabIndex={-1}
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -132,7 +136,7 @@ function UploadPage() {
         </div>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
+          <div role="alert" className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
             <AlertTriangle className="size-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">{error}</span>
             {canRetry && (
@@ -167,7 +171,7 @@ function UploadPage() {
                 aria-label="Remove file"
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <X className="size-4" />
+                <X className="size-4" aria-hidden />
               </button>
             )}
           </div>
@@ -176,10 +180,17 @@ function UploadPage() {
         {progress !== null && (
           <div className="mt-4">
             <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>{progress < 100 ? "Reading and summarizing…" : "Analysis ready"}</span>
+              <span role="status" aria-live="polite">{progress < 100 ? "Reading and summarizing…" : "Analysis ready"}</span>
               <span>{progress}%</span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              role="progressbar"
+              aria-label="Document analysis progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"
+            >
               <div
                 className="h-full rounded-full bg-accent transition-all duration-200"
                 style={{ width: `${progress}%` }}
