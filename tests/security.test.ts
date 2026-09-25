@@ -67,3 +67,31 @@ describe("security headers", () => {
     expect(res.headers.get("content-type")).toBe("text/html");
   });
 });
+
+describe("AI rate limiting", () => {
+  it("allows 10 AI requests per minute per visitor, then blocks the 11th", async () => {
+    const { allowRequest, resetRateLimit, RATE_LIMIT } = await import("@/lib/rateLimit.server");
+    resetRateLimit();
+    for (let i = 0; i < RATE_LIMIT; i++) expect(allowRequest("1.1.1.1", 1000 + i)).toBe(true);
+    expect(allowRequest("1.1.1.1", 2000)).toBe(false);
+    expect(allowRequest("2.2.2.2", 2000)).toBe(true); // other visitors unaffected
+  });
+  it("frees up again after the one-minute window", async () => {
+    const { allowRequest, resetRateLimit } = await import("@/lib/rateLimit.server");
+    resetRateLimit();
+    for (let i = 0; i < 10; i++) allowRequest("ip", 0);
+    expect(allowRequest("ip", 59_999)).toBe(false);
+    expect(allowRequest("ip", 60_001)).toBe(true);
+  });
+  it("guard returns the existing friendly usage-limit error with Try again", async () => {
+    const { rateLimitGuard, resetRateLimit } = await import("@/lib/rateLimit.server");
+    resetRateLimit();
+    for (let i = 0; i < 10; i++) expect(await rateLimitGuard()).toBeNull();
+    expect(await rateLimitGuard()).toEqual({
+      ok: false,
+      error: "The AI usage limit has been reached. Please try again later.",
+      retryable: true,
+    });
+    resetRateLimit();
+  });
+});
