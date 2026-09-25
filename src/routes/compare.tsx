@@ -50,6 +50,10 @@ const IMPORTANCE_CLASS = {
   Low: "border-border bg-secondary text-muted-foreground",
 } as const;
 
+const IMPORTANCE_ICON = { High: "■", Medium: "▲", Low: "●" } as const;
+
+const changeKey = (c: ComparisonChange, i: number) => `${c.category}-${c.section}-${c.title}-${i}`;
+
 const SUGGESTED = [
   "Which change affects me the most?",
   "Did the payments go up?",
@@ -98,6 +102,8 @@ function Slot({
         ref={ref}
         type="file"
         accept=".pdf,.docx"
+        aria-label={`${label}: choose a PDF or DOCX file`}
+        tabIndex={-1}
         className="hidden"
         data-testid={testId}
         onChange={(e) => {
@@ -106,7 +112,11 @@ function Slot({
           e.target.value = "";
         }}
       />
-      <button onClick={() => ref.current?.click()} className="mt-3 text-[11px] text-cyan hover:underline">
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        aria-label={`${file ? "Choose a different file" : "Choose a file"} for ${label}`}
+        className="mt-3 text-[11px] text-cyan hover:underline">
         {file ? "Choose a different file" : "Choose a file"}
       </button>
     </div>
@@ -122,8 +132,11 @@ function ChangeCard({ c }: { c: ComparisonChange }) {
         <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-cyan">
           {CATEGORY_LABEL[c.category]}
         </span>
-        <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold ${IMPORTANCE_CLASS[c.importance]}`}>
-          {c.importance}
+        <span
+          aria-label={`${c.importance} importance`}
+          className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold ${IMPORTANCE_CLASS[c.importance]}`}
+        >
+          <span aria-hidden>{IMPORTANCE_ICON[c.importance]} {c.importance} importance</span>
         </span>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -298,8 +311,8 @@ function Compare() {
             <div className="eyebrow text-accent/80">Important changes</div>
             <ul className="mt-3 space-y-2 text-[13px]">
               {result.keyChanges.map((k, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
+                <li key={`${i}-${k}`} className="flex gap-3">
+                  <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
                   <span className="text-foreground/85">{k}</span>
                 </li>
               ))}
@@ -312,7 +325,7 @@ function Compare() {
                 <Plus className="size-3.5" aria-hidden /> Added clauses
               </div>
               <div className="mt-4 space-y-2">
-                {added.length ? added.map((c, i) => <ChangeCard key={i} c={c} />) : (
+                {added.length ? added.map((c, i) => <ChangeCard key={changeKey(c, i)} c={c} />) : (
                   <p className="text-[12px] text-muted-foreground">No added clauses found.</p>
                 )}
               </div>
@@ -322,7 +335,7 @@ function Compare() {
                 <Minus className="size-3.5" aria-hidden /> Removed clauses
               </div>
               <div className="mt-4 space-y-2">
-                {removed.length ? removed.map((c, i) => <ChangeCard key={i} c={c} />) : (
+                {removed.length ? removed.map((c, i) => <ChangeCard key={changeKey(c, i)} c={c} />) : (
                   <p className="text-[12px] text-muted-foreground">No removed clauses found.</p>
                 )}
               </div>
@@ -334,7 +347,7 @@ function Compare() {
               <Pencil className="size-3.5" aria-hidden /> Modified clauses, payments, dates, obligations, termination & penalties
             </div>
             <div className="mt-4 space-y-2">
-              {other.length ? other.map((c, i) => <ChangeCard key={i} c={c} />) : (
+              {other.length ? other.map((c, i) => <ChangeCard key={changeKey(c, i)} c={c} />) : (
                 <p className="text-[12px] text-muted-foreground">No modified clauses found.</p>
               )}
             </div>
@@ -345,10 +358,10 @@ function Compare() {
             <p className="mt-1 text-[11px] text-muted-foreground">
               Answers are based only on the two documents you uploaded.
             </p>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-3" role="log" aria-live="polite" aria-label="Questions and answers about the changes">
               {msgs.map((m, i) => (
                 <div
-                  key={i}
+                  key={`${i}-${m.role}-${m.text.slice(0, 40)}`}
                   className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-4 py-3 text-[13px] ${
                     m.role === "user" ? "ml-auto bg-accent text-accent-foreground" : "border border-border bg-secondary/60"
                   }`}
@@ -365,7 +378,7 @@ function Compare() {
                   )}
                 </div>
               ))}
-              {asking && <div className="text-[12px] text-muted-foreground">Thinking…</div>}
+              {asking && <div role="status" className="text-[12px] text-muted-foreground">Thinking…</div>}
             </div>
             {msgs.length === 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -390,8 +403,8 @@ function Compare() {
                 aria-label="Ask about these changes"
                 className="flex-1 rounded-xl border border-border bg-secondary px-4 py-2.5 text-[13px] outline-none focus:border-cyan"
               />
-              <button type="submit" disabled={asking || !q.trim()} aria-label="Send" className="rounded-xl bg-accent px-4 text-accent-foreground disabled:opacity-50">
-                <Send className="size-4" />
+              <button type="submit" disabled={asking || !q.trim()} aria-label="Send question about the changes" className="rounded-xl bg-accent px-4 text-accent-foreground disabled:opacity-50">
+                <Send className="size-4" aria-hidden />
               </button>
             </form>
           </section>

@@ -19,6 +19,12 @@ const nav = [
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-screen w-full overflow-hidden bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-foreground"
+      >
+        Skip to main content
+      </a>
       <aside className="relative z-20 hidden w-60 shrink-0 flex-col gap-8 border-r border-border p-5 md:flex">
         <Link to="/" className="flex items-center gap-2.5">
           <div className="grid size-8 place-items-center rounded-lg bg-accent font-display text-lg font-bold text-accent-foreground">
@@ -54,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="relative min-w-0 flex-1">
+      <main id="main-content" tabIndex={-1} className="relative min-w-0 flex-1 outline-none">
         <div className="pointer-events-none absolute -top-24 -left-16 size-[520px] rounded-full bg-cyan/15 blur-[130px] aura" />
         <div className="pointer-events-none absolute top-40 right-0 size-[460px] rounded-full bg-violet/20 blur-[140px] aura2" />
         <div className="pointer-events-none absolute top-1/2 left-1/3 h-40 w-[560px] -rotate-[18deg] bg-gradient-to-r from-cyan/25 via-accent/20 to-violet/25 blur-2xl" />
@@ -97,11 +103,13 @@ export function RiskBadge({ risk }: { risk: "low" | "medium" | "high" }) {
     medium: "bg-warning/15 text-warning",
     high: "bg-destructive/20 text-destructive",
   } as const;
+  const icon = { low: "●", medium: "▲", high: "■" } as const;
   return (
     <span
+      aria-label={`${risk} risk`}
       className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${map[risk]}`}
     >
-      {risk}
+      <span aria-hidden>{icon[risk]} {risk}</span>
     </span>
   );
 }

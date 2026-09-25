@@ -125,7 +125,13 @@ function Assistant() {
       <div className="anim-in mt-7 grid gap-5 lg:grid-cols-3" style={{ animationDelay: "0.12s" }}>
         <div className="flex h-[560px] flex-col rounded-2xl border border-border bg-glass/60 p-6 lg:col-span-2">
           <div className="eyebrow text-accent/80">Conversation</div>
-          <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1 text-[13px]">
+          <div
+            className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1 text-[13px]"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label="Conversation with the AI legal assistant"
+          >
             {messages.map((m) =>
               m.role === "user" ? (
                 <div
@@ -153,7 +159,7 @@ function Assistant() {
               ),
             )}
             {thinking && (
-              <div className="max-w-[60%] rounded-2xl rounded-tl-sm bg-secondary px-3 py-2 text-muted-foreground">
+              <div role="status" className="max-w-[60%] rounded-2xl rounded-tl-sm bg-secondary px-3 py-2 text-muted-foreground">
                 Reading the document…
               </div>
             )}
@@ -173,6 +179,7 @@ function Assistant() {
               onChange={(e) => setInput(e.target.value)}
               className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
               placeholder="Ask about your document…"
+              aria-label="Ask a question about your document"
             />
             <button
               type="submit"
@@ -180,7 +187,7 @@ function Assistant() {
               disabled={!input.trim() || thinking}
               className="grid size-8 place-items-center rounded-lg bg-accent text-accent-foreground disabled:opacity-40"
             >
-              <ArrowUp className="size-4" />
+              <ArrowUp className="size-4" aria-hidden />
             </button>
           </form>
         </div>
