@@ -65,7 +65,7 @@ function Dashboard() {
       >
         <div className="bob pointer-events-none absolute -right-6 -bottom-6 size-28 -rotate-12 bg-gradient-to-tl from-accent/25 to-transparent" />
         <div className="flex items-center justify-between">
-          <div className="eyebrow text-muted-foreground">Recent documents</div>
+          <div className="eyebrow text-muted-foreground">Recent documents · Sample data</div>
           <Link to="/analysis" className="text-[12px] text-cyan hover:underline">
             View analysis
           </Link>

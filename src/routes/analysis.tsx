@@ -78,15 +78,21 @@ function Bullets({ items }: { items: string[] }) {
 
 function Analysis() {
   const [doc, setDoc] = useState<AnalysisData & { status: string }>(sampleDocument);
+  const [isSample, setIsSample] = useState(true);
   useEffect(() => {
     const s = loadCurrent();
-    if (s) setDoc({ ...s.analysis, status: `AI analysis · ${s.name}` });
+    if (s) {
+      setDoc({ ...s.analysis, status: `AI analysis · ${s.name}` });
+      setIsSample(false);
+    }
   }, []);
   return (
     <AppShell>
       <div className="anim-in flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="eyebrow text-cyan">{doc.status}</div>
+          <div className="eyebrow text-cyan">
+            {isSample ? "Sample / demo data · fictional agreement" : doc.status}
+          </div>
           <h1 className="mt-2 font-display text-4xl font-bold tracking-tight">{doc.title}</h1>
           <div className="mt-1 text-[13px] text-muted-foreground">{doc.subtitle}</div>
         </div>

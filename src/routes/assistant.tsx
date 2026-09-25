@@ -43,7 +43,7 @@ function Assistant() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [docLabel, setDocLabel] = useState(`${sampleDocument.title} — ${sampleDocument.subtitle}`);
+  const [docLabel, setDocLabel] = useState(`the sample (demo) ${sampleDocument.title} — ${sampleDocument.subtitle}`);
   const askFn = useServerFn(askDocument);
   const [thinking, setThinking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
