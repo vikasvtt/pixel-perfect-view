@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { FileText, Plus, Minus, Pencil, Send } from "lucide-react";
 import { AppShell, Disclaimer } from "@/components/AppShell";
 import { fileToPayload, type DocPayload } from "@/lib/documentStore";
+import { categorizeChanges, compareFileError, MAX_FILE_MB } from "@/lib/fileValidation";
 import {
   askComparison,
   compareDocuments,
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/compare")({
   component: Compare,
 });
 
-const MAX_MB = 14;
+const MAX_MB = MAX_FILE_MB;
 
 const CATEGORY_LABEL: Record<ChangeCategory, string> = {
   added: "Added clause",
@@ -55,13 +56,7 @@ const SUGGESTED = [
   "Is it harder to end the agreement now?",
 ];
 
-function validate(f: File): string | null {
-  if (!/\.(pdf|docx)$/i.test(f.name)) return "That file type isn't supported. Upload a PDF or DOCX.";
-  if (f.size === 0) return "That file is empty. Please choose a document with content.";
-  if (f.size > MAX_MB * 1024 * 1024)
-    return `That file is too large — it's ${(f.size / 1024 / 1024).toFixed(1)} MB, and the limit is ${MAX_MB} MB.`;
-  return null;
-}
+const validate = compareFileError;
 
 function Slot({
   label,
@@ -235,10 +230,7 @@ function Compare() {
     requestAnswer(prev.text, msgs.slice(0, msgIndex - 1));
   }
 
-  const added = result?.changes.filter((c) => c.category === "added") ?? [];
-  const removed = result?.changes.filter((c) => c.category === "removed") ?? [];
-  const other = result?.changes.filter((c) => c.category !== "added" && c.category !== "removed") ?? [];
-  const high = result?.changes.filter((c) => c.importance === "High").length ?? 0;
+  const { added, removed, other, high } = categorizeChanges(result?.changes);
 
   return (
     <AppShell>
