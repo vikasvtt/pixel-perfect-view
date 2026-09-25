@@ -29,7 +29,7 @@ export const Route = createFileRoute("/assistant")({
   component: Assistant,
 });
 
-type Msg = { id: number; role: "user" | "assistant"; text: string };
+type Msg = { id: number; role: "user" | "assistant"; text: string; retryable?: boolean };
 
 let nextId = 3;
 
@@ -66,21 +66,49 @@ function Assistant() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, thinking]);
 
+  function callAi(question: string, history: { role: "user" | "assistant"; text: string }[]) {
+    setThinking(true);
+    askFn({ data: { doc: currentDocContext(sampleContext), history, question } })
+      .then((res) => {
+        setMessages((m) => [
+          ...m,
+          res.ok
+            ? { id: nextId++, role: "assistant" as const, text: res.value }
+            : {
+                id: nextId++,
+                role: "assistant" as const,
+                text: `⚠ ${res.error}`,
+                retryable: res.retryable,
+              },
+        ]);
+      })
+      .catch(() => {
+        setMessages((m) => [
+          ...m,
+          { id: nextId++, role: "assistant" as const, text: "⚠ Couldn't reach the AI. Please try again." },
+        ]);
+      })
+      .finally(() => {
+        setThinking(false);
+        inputRef.current?.focus();
+      });
+  }
+
   function send(question: string) {
     const q = question.trim();
     if (!q || thinking) return;
     setMessages((m) => [...m, { id: nextId++, role: "user", text: q }]);
     setInput("");
-    setThinking(true);
-    const history = messages.slice(1).map(({ role, text }) => ({ role, text }));
-    askFn({ data: { doc: currentDocContext(sampleContext), history, question: q } })
-      .then((res) => (res.ok ? res.value : `⚠ ${res.error}`))
-      .catch(() => "⚠ Couldn't reach the AI. Please try again.")
-      .then((text) => {
-        setMessages((m) => [...m, { id: nextId++, role: "assistant", text }]);
-        setThinking(false);
-        inputRef.current?.focus();
-      });
+    callAi(q, messages.slice(1).map(({ role, text }) => ({ role, text })));
+  }
+
+  function retry(msgId: number) {
+    if (thinking) return;
+    const errIdx = messages.findIndex((m) => m.id === msgId);
+    if (errIdx < 1 || messages[errIdx - 1].role !== "user") return;
+    const question = messages[errIdx - 1].text;
+    setMessages((m) => m.filter((x) => x.id !== msgId));
+    callAi(question, messages.slice(1, errIdx - 1).map(({ role, text }) => ({ role, text })));
   }
 
   return (
@@ -112,6 +140,15 @@ function Assistant() {
                   className="max-w-[85%] rounded-2xl rounded-tl-sm bg-secondary px-3 py-2 leading-relaxed text-foreground/90"
                 >
                   {m.text}
+                  {m.retryable && (
+                    <button
+                      onClick={() => retry(m.id)}
+                      disabled={thinking}
+                      className="mt-2 block rounded-lg border border-destructive/40 px-2.5 py-1 text-[11px] font-semibold text-destructive transition-colors hover:bg-destructive/15 disabled:opacity-40"
+                    >
+                      Try again
+                    </button>
+                  )}
                 </div>
               ),
             )}
