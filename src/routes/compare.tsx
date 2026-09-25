@@ -52,7 +52,7 @@ const IMPORTANCE_CLASS = {
 
 const IMPORTANCE_ICON = { High: "■", Medium: "▲", Low: "●" } as const;
 
-const changeKey = (c: ComparisonChange, i: number) => `${c.kind ?? ""}-${c.section}-${c.title}-${i}`;
+const changeKey = (c: ComparisonChange, i: number) => `${c.category}-${c.section}-${c.title}-${i}`;
 
 const SUGGESTED = [
   "Which change affects me the most?",
