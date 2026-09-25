@@ -31,7 +31,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment files (secrets live in Lovable Cloud encrypted store, never in git)
+# Environment overrides and secrets stay out of git. Lovable's generated .env
+# contains only publishable VITE_* backend configuration required at build time.
 .env.*
 !.env.example
-.env
