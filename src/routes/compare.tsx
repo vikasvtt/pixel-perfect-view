@@ -206,7 +206,11 @@ function Compare() {
         ...m,
         res.ok
           ? { role: "assistant" as const, text: res.value }
-          : { role: "assistant" as const, text: res.error, retryable: res.retryable },
+          : {
+              role: "assistant" as const,
+              text: res.error,
+              ...(res.retryable ? { retryable: true } : {}),
+            },
       ]);
     } catch {
       setMsgs((m) => [...m, { role: "assistant" as const, text: "Something went wrong. Please try again." }]);
@@ -225,10 +229,10 @@ function Compare() {
 
   function retryAsk(msgIndex: number) {
     if (!docs || !result || asking) return;
-    if (msgs[msgIndex - 1]?.role !== "user") return;
-    const question = msgs[msgIndex - 1].text;
+    const prev = msgs[msgIndex - 1];
+    if (!prev || prev.role !== "user") return;
     setMsgs(msgs.filter((_, i) => i !== msgIndex));
-    requestAnswer(question, msgs.slice(0, msgIndex - 1));
+    requestAnswer(prev.text, msgs.slice(0, msgIndex - 1));
   }
 
   const added = result?.changes.filter((c) => c.category === "added") ?? [];

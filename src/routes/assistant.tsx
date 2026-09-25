@@ -78,7 +78,7 @@ function Assistant() {
                 id: nextId++,
                 role: "assistant" as const,
                 text: `⚠ ${res.error}`,
-                retryable: res.retryable,
+                ...(res.retryable ? { retryable: true } : {}),
               },
         ]);
       })
@@ -105,10 +105,10 @@ function Assistant() {
   function retry(msgId: number) {
     if (thinking) return;
     const errIdx = messages.findIndex((m) => m.id === msgId);
-    if (errIdx < 1 || messages[errIdx - 1].role !== "user") return;
-    const question = messages[errIdx - 1].text;
+    const prev = errIdx > 0 ? messages[errIdx - 1] : undefined;
+    if (!prev || prev.role !== "user") return;
     setMessages((m) => m.filter((x) => x.id !== msgId));
-    callAi(question, messages.slice(1, errIdx - 1).map(({ role, text }) => ({ role, text })));
+    callAi(prev.text, messages.slice(1, errIdx - 1).map(({ role, text }) => ({ role, text })));
   }
 
   return (
