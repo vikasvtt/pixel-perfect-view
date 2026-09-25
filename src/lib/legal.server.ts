@@ -72,7 +72,7 @@ export async function friendly<T>(fn: () => Promise<T>): Promise<Result<T>> {
   } catch (e) {
     const { GeminiError } = await import("./gemini.server");
     if (e instanceof GeminiError) {
-      const retryable = e.status === 429 || e.status === 503;
+      const retryable = e.status === 429 || e.status === 503 || e.status === 504;
       return { ok: false, error: e.message, retryable };
     }
     console.error(e);
