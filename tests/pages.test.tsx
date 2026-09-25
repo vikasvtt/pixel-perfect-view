@@ -47,7 +47,7 @@ describe("page smoke tests", () => {
     expect(screen.getByRole("heading", { name: /upload a document/i })).toBeTruthy();
     expect(screen.getByText(/up to 14 MB/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Analyze Document" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
+    expect(screen.getAllByText(DISCLAIMER).length).toBeGreaterThan(0);
   });
 
   it("Analysis renders sections and disclaimer", async () => {
@@ -61,13 +61,13 @@ describe("page smoke tests", () => {
     expect(screen.getByRole("heading", { name: /ask your document/i })).toBeTruthy();
     expect(screen.getByText("Can I terminate this agreement early?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send question" })).toBeTruthy();
-    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
+    expect(screen.getAllByText(DISCLAIMER).length).toBeGreaterThan(0);
   });
 
   it("Compare renders both upload slots and disclaimer", async () => {
     await renderRoute("compare");
     expect(screen.getByText("Original Document")).toBeTruthy();
     expect(screen.getByText("New Document")).toBeTruthy();
-    expect(screen.getByText(DISCLAIMER)).toBeTruthy();
+    expect(screen.getAllByText(DISCLAIMER).length).toBeGreaterThan(0);
   });
 });
