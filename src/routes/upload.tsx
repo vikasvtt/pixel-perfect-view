@@ -85,7 +85,7 @@ function UploadPage() {
       <div className="anim-in">
         <div className="eyebrow text-cyan">Step 1 of 2</div>
         <h1 className="mt-2 font-display text-4xl font-bold tracking-tight">Upload a document</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p id="upload-hint" className="mt-1 text-[13px] text-muted-foreground">
           PDF or DOCX · up to {MAX_MB} MB · your file is read securely by our AI and not stored.
         </p>
       </div>
