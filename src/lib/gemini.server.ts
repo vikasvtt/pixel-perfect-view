@@ -87,8 +87,8 @@ async function callGeminiOnce(body: unknown, budgetMs: number = GEMINI_DEADLINE_
   }
 
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    console.error("Gemini error", res.status, detail.slice(0, 500));
+    // Log only the HTTP status — never Google's error body, prompts, documents or keys.
+    console.error("Gemini error", res.status);
     const msg =
       res.status === 429
         ? "The AI usage limit has been reached. Please try again later."
